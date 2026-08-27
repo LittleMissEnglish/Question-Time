@@ -1,0 +1,583 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Question Time — USA Road Trip</title>
+<style>
+:root{
+  --navy:#073665; --teal:#138b88; --coral:#ef6472; --cream:#fff8ea;
+  --gold:#f5b71b; --ink:#18334d;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:#111;font-family:"Trebuchet MS",Arial,sans-serif}
+#stage{width:100vw;height:100vh;display:grid;place-items:center;background:#111}
+#frame{position:relative;overflow:hidden;transition:width .15s ease,aspect-ratio .15s ease}
+#frame.titleMode{aspect-ratio:1672/941;width:min(100vw,177.7vh);max-height:100vh}
+#frame.challengeMode{aspect-ratio:3/2;width:min(100vw,150vh);max-height:100vh}
+#frame.welcomeMode{aspect-ratio:3/2;width:min(100vw,150vh);max-height:100vh}
+.screen{position:absolute;inset:0;background-size:100% 100%;background-position:center;background-repeat:no-repeat}
+.hot{position:absolute;border:0;background:transparent;padding:0;margin:0;cursor:pointer;z-index:20;color:transparent}
+.hot:focus-visible{outline:3px dashed rgba(255,255,255,.95);outline-offset:2px}
+
+/* ---------- WELCOME ---------- */
+#welcome{display:block;background-image:url('welcome.jpg')}
+#welcomeStart{left:64.0%;top:75.0%;width:27.5%;height:16.2%}
+
+/* ---------- UNLOCK ---------- */
+#unlock{display:none;background-image:url('unlock.jpg')}
+#unlockStart{left:58.0%;top:75.0%;width:33.0%;height:17.0%}
+
+/* ---------- TITLE ---------- */
+#title{display:none}
+#bankArea{
+  position:absolute;left:8.4%;top:46.1%;width:36.4%;height:25.8%;
+  z-index:8;overflow:hidden;padding:0;color:var(--ink);
+}
+#bankScroll{
+  position:absolute;left:0;top:0;right:27px;bottom:0;
+  overflow-y:auto;overflow-x:hidden;
+  padding:3px 8px 4px 7px;
+  scrollbar-width:thin;scrollbar-color:#138b88 transparent
+}
+#bankScroll::-webkit-scrollbar{width:6px}
+#bankScroll::-webkit-scrollbar-track{background:transparent}
+#bankScroll::-webkit-scrollbar-thumb{background:#138b88;border-radius:8px}
+.scrollArrow{position:absolute;right:1px;width:22px;height:22px;border:0;border-radius:50%;background:rgba(255,248,234,.96);color:#138b88;font-weight:1000;box-shadow:0 2px 6px rgba(0,0,0,.18);z-index:14;cursor:pointer}
+#scrollUp{top:2px} #scrollDown{bottom:2px}
+.bankEmpty{
+  height:100%;display:grid;place-items:center;text-align:center;
+  color:#b28c68;font-weight:800;font-size:clamp(12px,1vw,20px);line-height:1.35
+}
+.qrow{
+  display:grid;grid-template-columns:23px minmax(0,1fr) auto;
+  gap:7px;align-items:start;padding:5px 1px;
+  border-bottom:1px solid rgba(173,145,106,.22);
+  font-size:clamp(10px,.82vw,15px);font-weight:800;line-height:1.22
+}
+.qnum{
+  width:23px;height:23px;border-radius:50%;display:grid;place-items:center;
+  background:var(--teal);color:#fff;font-size:.75em
+}
+.qrow > span:nth-child(2){
+  min-width:0;overflow-wrap:anywhere;word-break:normal;
+}
+.newBadge{
+  background:var(--coral);color:#fff;border-radius:8px;padding:2px 6px;
+  font-size:.68em;white-space:nowrap
+}
+#targetTitle{
+  position:absolute;left:54.2%;top:48.7%;width:8.0%;height:12.2%;
+  display:grid;place-items:center;z-index:9;color:#d84f63;
+  font-weight:1000;font-size:clamp(28px,3.4vw,62px);pointer-events:none
+}
+/* transparent zones precisely over the baked controls */
+#hotAdd{left:32.0%;top:39.1%;width:14.5%;height:10.0%}
+#hotStart{left:4.6%;top:78.8%;width:22.5%;height:15.0%}
+#hotRoadMapTitle{left:27.3%;top:78.3%;width:20.5%;height:15.5%}
+#hotSoundTitle{left:47.2%;top:78.2%;width:10.0%;height:15.5%}
+
+/* ---------- SHARED CHALLENGE ---------- */
+#challenge{display:none;background-image:url('challenge.jpg')}
+#challengeTarget{
+  position:absolute;left:77.0%;top:23.6%;width:9.7%;height:10.7%;
+  display:grid;place-items:center;z-index:10;color:#d84f63;
+  font-weight:1000;font-size:clamp(25px,3vw,52px);pointer-events:none
+}
+#challengeCount{
+  position:absolute;left:34.0%;top:44.0%;width:7.2%;height:10.8%;
+  display:grid;place-items:center;z-index:10;color:var(--navy);
+  font-weight:1000;font-size:clamp(20px,2.4vw,40px);pointer-events:none
+}
+#challengeTimer{
+  position:absolute;left:44.2%;top:39.7%;width:16.2%;height:18.3%;
+  display:grid;place-items:center;z-index:10;color:var(--navy);
+  font-weight:1000;font-size:clamp(34px,4vw,68px);pointer-events:none
+}
+/* all these remain invisible */
+#hotBack{left:.5%;top:.5%;width:11.5%;height:8.2%}
+#hotRoadMapChallenge{left:.3%;top:66.0%;width:16.3%;height:10.2%}
+#hotSoundChallenge{right:.3%;top:.4%;width:13.0%;height:8.4%}
+#hotClock{left:43.3%;top:32.0%;width:18.7%;height:31.5%}
+#hotCount{left:32.2%;top:41.0%;width:9.3%;height:18.0%}
+
+/* ---------- MODALS ---------- */
+.overlay{
+  position:absolute;inset:0;background:rgba(3,27,53,.64);
+  display:none;place-items:center;z-index:50
+}
+.overlay.show{display:grid}
+.panel{
+  width:min(720px,84%);max-height:82%;overflow:auto;background:var(--cream);
+  border:5px solid #fff;border-radius:26px;padding:22px;color:var(--navy);
+  box-shadow:0 16px 42px rgba(0,0,0,.35)
+}
+.panel h2{margin:0 0 13px;font-size:clamp(25px,2.4vw,38px)}
+.panel input[type=text]{
+  width:100%;font:inherit;font-size:19px;padding:11px 12px;
+  border:2px solid #dcc8a5;border-radius:11px;background:#fff
+}
+.row{display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;margin-top:12px}
+.panel button{
+  border:0;border-radius:11px;padding:9px 14px;color:#fff;
+  font-weight:1000;cursor:pointer
+}
+.teal{background:var(--teal)} .navy{background:var(--navy)} .red{background:#d9554d}
+#manageList{margin-top:14px}
+.manage{
+  display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;
+  padding:8px 0;border-bottom:1px solid #eadbc2
+}
+.manage .editBtn{background:var(--teal);padding:6px 9px;margin-right:4px}
+.manage .delBtn{background:#d9554d;padding:6px 9px}
+
+/* roadmap */
+#roadmapPanel{width:min(1150px,92%);max-height:90%}
+#roadmapPanel h2{text-align:center;margin:0 0 10px;font-size:clamp(26px,2.8vw,46px)}
+#victoryTracker{
+  margin:8px auto 14px;max-width:850px;background:#fffaf1;
+  border:3px solid #e6cf9e;border-radius:18px;padding:11px 15px
+}
+#victoryTrackerTitle{text-align:center;font-weight:1000;font-size:clamp(14px,1.2vw,21px);margin-bottom:9px}
+#victoryDots{display:grid;grid-template-columns:repeat(10,1fr);gap:8px}
+.dot{
+  aspect-ratio:1;border-radius:50%;background:#e7ded0;border:2px solid #fff;
+  display:grid;place-items:center;color:#9a8e7d;font-weight:1000;font-size:clamp(9px,.72vw,13px)
+}
+.dot.on{background:var(--gold);color:#6f4f00}
+#roadGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}
+.roadCard{
+  position:relative;aspect-ratio:1672/941;border-radius:15px;overflow:hidden;
+  box-shadow:0 7px 18px rgba(0,0,0,.15);background:#fff
+}
+.roadCard img{width:100%;height:100%;object-fit:cover;display:block}
+.roadCard.current{outline:6px solid var(--gold)}
+.roadCard.locked{opacity:.5}
+.roadShade{
+  position:absolute;inset:0;display:none;place-items:center;
+  background:rgba(7,54,101,.52);color:#fff;font-weight:1000;
+  font-size:clamp(17px,1.9vw,30px)
+}
+.roadCard.locked .roadShade{display:grid}
+.roadBadge{
+  position:absolute;left:8px;top:8px;background:rgba(255,249,237,.96);
+  color:var(--navy);border-radius:9px;padding:5px 8px;
+  font-weight:1000;font-size:clamp(9px,.72vw,13px)
+}
+#yearBar{margin:13px 0 4px;background:#eadfc8;border-radius:999px;height:18px;overflow:hidden}
+#yearFill{height:100%;width:0;background:linear-gradient(90deg,#1e9f9a,#f2b41d)}
+#yearText{text-align:center;font-weight:1000;margin-top:6px}
+
+/* result + transition */
+#resultPanel,#transitionPanel{text-align:center}
+.big{font-size:clamp(38px,4.5vw,70px);font-weight:1000;margin:0 0 8px}
+.flash{font-size:clamp(32px,4vw,60px);font-weight:1000;color:#d9554d;margin:10px}
+#transitionNext{font-size:clamp(28px,3.2vw,50px);font-weight:1000;color:var(--coral);margin:12px 0}
+#transitionTarget{font-size:clamp(18px,2vw,32px);font-weight:900}
+.toast{
+  position:absolute;left:50%;bottom:3%;transform:translateX(-50%);
+  background:rgba(7,54,101,.94);color:#fff;padding:8px 13px;border-radius:10px;
+  font-weight:900;z-index:70;display:none
+}
+.toast.show{display:block}
+</style>
+</head>
+<body>
+<div id="stage"><div id="frame" class="welcomeMode">
+
+<section id="welcome" class="screen">
+  <button id="welcomeStart" class="hot" aria-label="Start the adventure"></button>
+</section>
+
+<section id="title" class="screen">
+  <div id="bankArea">
+    <div id="bankScroll"></div>
+    <button id="scrollUp" class="scrollArrow" aria-label="Scroll questions up">▲</button>
+    <button id="scrollDown" class="scrollArrow" aria-label="Scroll questions down">▼</button>
+  </div>
+  <div id="targetTitle">8</div>
+  <button id="hotAdd" class="hot" aria-label="Add question"></button>
+  <button id="hotStart" class="hot" aria-label="Start challenge"></button>
+  <button id="hotRoadMapTitle" class="hot" aria-label="Open road map"></button>
+  <button id="hotSoundTitle" class="hot" aria-label="Toggle sound"></button>
+</section>
+
+<section id="challenge" class="screen">
+  <div id="challengeTarget">8</div>
+  <div id="challengeCount">0 / 8</div>
+  <div id="challengeTimer">3:00</div>
+  <button id="hotBack" class="hot" aria-label="Back"></button>
+  <button id="hotRoadMapChallenge" class="hot" aria-label="Open road map"></button>
+  <button id="hotSoundChallenge" class="hot" aria-label="Toggle sound"></button>
+  <button id="hotClock" class="hot" aria-label="Start timer"></button>
+  <button id="hotCount" class="hot" aria-label="Add one question"></button>
+</section>
+
+<section id="unlock" class="screen">
+  <button id="unlockStart" class="hot" aria-label="Continue the road trip"></button>
+</section>
+
+<div id="editor" class="overlay"><div class="panel">
+  <h2>Question Bank</h2>
+  <input id="qinput" type="text" placeholder="Type the question here…">
+  <label style="display:block;margin-top:10px;font-weight:800">
+    <input id="newbadge" type="checkbox" checked> Show NEW! badge
+  </label>
+  <div class="row">
+    <button id="closeEditor" class="navy">CLOSE</button>
+    <button id="addQuestion" class="teal">+ ADD QUESTION</button>
+  </div>
+  <div id="manageList"></div>
+</div></div>
+
+<div id="roadmap" class="overlay"><div class="panel" id="roadmapPanel">
+  <h2>USA ROAD TRIP — YEAR PROGRESS</h2>
+  <div id="victoryTracker">
+    <div id="victoryTrackerTitle">CALIFORNIA — 0 / 10 VICTORIES</div>
+    <div id="victoryDots"></div>
+  </div>
+  <div id="roadGrid"></div>
+  <div id="yearBar"><div id="yearFill"></div></div>
+  <div id="yearText"></div>
+  <div class="row" style="justify-content:center">
+    <button id="closeRoadmap" class="navy">BACK TO QUESTION TIME</button>
+  </div>
+</div></div>
+
+<div id="result" class="overlay"><div class="panel" id="resultPanel">
+  <div id="resultTitle" class="big"></div>
+  <div id="resultBody"></div>
+  <div class="row" style="justify-content:center">
+    <button id="victoryBtn" class="teal">★ ADD A VICTORY</button>
+    <button id="flashBtn" class="red">⚡ FLASH TEST</button>
+    <button id="resultBack" class="navy">BACK</button>
+  </div>
+</div></div>
+
+<div id="toast" class="toast"></div>
+</div></div>
+
+<script>
+const LEVELS=[{"state": "California", "target": 8}, {"state": "Arizona", "target": 10}, {"state": "Texas", "target": 12}, {"state": "Louisiana", "target": 15}, {"state": "Tennessee", "target": 17}, {"state": "New York", "target": 20}];
+const TITLE_BACKGROUNDS={"California": "title_california.jpg", "Arizona": "title_arizona.jpg", "Texas": "title_texas.jpg", "Louisiana": "title_louisiana.jpg", "Tennessee": "title_tennessee.jpg", "New York": "title_new_york.jpg"};
+const STORAGE="question_time_complete_2026_v3";
+const OLD_STORAGE="question_time_complete_2026_v2";
+
+let data=JSON.parse(localStorage.getItem(STORAGE)||"null");
+if(!data){
+  data=JSON.parse(localStorage.getItem(OLD_STORAGE)||"null");
+}
+data=data||{questions:[], victories:0, sound:true, session:0, level:0};
+if(data.level==null)data.level=0;
+
+let rem=180,count=0,timer=null,countdownTimer=null,startDelay=null,started=false,paused=false,editing=-1;
+const $=s=>document.querySelector(s);
+const save=()=>localStorage.setItem(STORAGE,JSON.stringify(data));
+const current=()=>LEVELS[data.level];
+
+function esc(s){
+  return s.replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+}
+function toast(msg){
+  $("#toast").textContent=msg; $("#toast").classList.add("show");
+  clearTimeout(toast.t); toast.t=setTimeout(()=>$("#toast").classList.remove("show"),1100)
+}
+function beep(f=600,d=.08){
+  if(!data.sound)return;
+  const C=window.AudioContext||window.webkitAudioContext;
+  const c=beep.c||(beep.c=new C()),o=c.createOscillator(),g=c.createGain();
+  o.frequency.value=f;g.gain.value=.035;o.connect(g);g.connect(c.destination);o.start();
+  g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+d);o.stop(c.currentTime+d)
+}
+
+
+function uiClick(){
+  if(!data.sound)return;
+  try{
+    const C=window.AudioContext||window.webkitAudioContext;
+    const c=beep.c||(beep.c=new C());
+    if(c.state==="suspended")c.resume();
+    const o=c.createOscillator(),g=c.createGain();
+    o.type="sine";
+    o.frequency.setValueAtTime(460,c.currentTime);
+    o.frequency.exponentialRampToValueAtTime(620,c.currentTime+.035);
+    g.gain.setValueAtTime(.018,c.currentTime);
+    g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+.045);
+    o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+.05);
+  }catch(e){}
+}
+
+function clearChallengeTimers(){
+  clearInterval(timer);
+  clearInterval(countdownTimer);
+  clearTimeout(startDelay);
+  timer=null;
+  countdownTimer=null;
+  startDelay=null;
+  started=false;
+  paused=false;
+}
+
+function setMode(mode){
+  $("#frame").classList.toggle("titleMode",mode==="title");
+  $("#frame").classList.toggle("challengeMode",mode==="challenge");
+  $("#frame").classList.toggle("welcomeMode",mode==="welcome"||mode==="unlock");
+}
+function hideMainScreens(){
+  $("#welcome").style.display="none";
+  $("#title").style.display="none";
+  $("#challenge").style.display="none";
+  $("#unlock").style.display="none";
+}
+function showWelcome(){hideMainScreens();$("#welcome").style.display="block";setMode("welcome")}
+function showTitle(){hideMainScreens();$("#title").style.display="block";setMode("title");renderBank();renderLevel()}
+function showUnlock(){hideMainScreens();$("#unlock").style.display="block";setMode("unlock")}
+
+function renderLevel(){
+  const L=current();
+  $("#title").style.backgroundImage=`url("${TITLE_BACKGROUNDS[L.state]}")`;
+  $("#targetTitle").textContent=L.target;
+  $("#challengeTarget").textContent=L.target;
+  $("#challengeCount").textContent=`0 / ${L.target}`;
+  renderRoadmap();
+}
+function renderBank(){
+  if(!data.questions.length){
+    $("#bankScroll").innerHTML='<div class="bankEmpty">Your Question Bank is empty.<br>Click <b>+ ADD QUESTION</b> to build it.</div>';
+    return;
+  }
+  $("#bankScroll").innerHTML=data.questions.map((q,i)=>`
+    <div class="qrow">
+      <span class="qnum">${i+1}</span>
+      <span>${esc(q.text)}</span>
+      ${q.newFor>0?'<span class="newBadge">NEW!</span>':'<span></span>'}
+    </div>`).join("");
+}
+function renderManage(){
+  $("#manageList").innerHTML=data.questions.map((q,i)=>`
+    <div class="manage">
+      <span>${i+1}. ${esc(q.text)} ${q.newFor>0?'<b style="color:#ee6473">NEW!</b>':''}</span>
+      <span>
+        <button class="editBtn" data-i="${i}">✎</button>
+        <button class="delBtn" data-i="${i}">×</button>
+      </span>
+    </div>`).join("");
+}
+function renderRoadmap(){
+  const L=current();
+  $("#victoryTrackerTitle").textContent=`${L.state.toUpperCase()} — ${data.victories} / 10 VICTORIES`;
+  $("#victoryDots").innerHTML=Array.from({length:10},(_,i)=>`<div class="dot ${i<data.victories?"on":""}">${i+1}</div>`).join("");
+  const pct=Math.min(100,((data.level+data.victories/10)/LEVELS.length)*100);
+  $("#yearFill").style.width=pct+"%";
+  $("#yearText").textContent=data.level===LEVELS.length-1&&data.victories>=10
+    ?"USA ROAD TRIP COMPLETED — QUESTION MASTER!"
+    :`Level ${data.level+1} of ${LEVELS.length} — current stop: ${L.state}`;
+  $("#roadGrid").innerHTML=LEVELS.map((x,i)=>`
+    <div class="roadCard ${i===data.level?"current":""} ${i>data.level?"locked":""}">
+      <img src="${TITLE_BACKGROUNDS[x.state]}" alt="${x.state}">
+      <div class="roadBadge">${i<data.level?"✓ COMPLETED • ":i===data.level?`${data.victories}/10 • `:""}LEVEL ${i+1} • TARGET ${x.target}</div>
+      <div class="roadShade">🔒 LOCKED</div>
+    </div>`).join("");
+}
+function saveAndRender(){save();renderBank();renderManage();renderLevel()}
+
+/* WELCOME + QUESTION BANK SCROLL */
+$("#welcomeStart").onclick=()=>showTitle();
+$("#scrollUp").onclick=()=>$("#bankScroll").scrollBy({top:-120,behavior:"smooth"});
+$("#scrollDown").onclick=()=>$("#bankScroll").scrollBy({top:120,behavior:"smooth"});
+
+/* QUESTION BANK */
+$("#hotAdd").onclick=()=>{
+  editing=-1;$("#qinput").value="";$("#newbadge").checked=true;
+  $("#addQuestion").textContent="+ ADD QUESTION";renderManage();
+  $("#editor").classList.add("show");$("#qinput").focus();
+};
+$("#closeEditor").onclick=()=>$("#editor").classList.remove("show");
+$("#addQuestion").onclick=()=>{
+  const v=$("#qinput").value.trim(); if(!v)return;
+  if(editing>=0){
+    const old=data.questions[editing];
+    data.questions[editing]={text:v,newFor:$("#newbadge").checked?Math.max(old.newFor,1):0};
+    editing=-1;$("#addQuestion").textContent="+ ADD QUESTION";
+  }else{
+    data.questions.push({text:v,newFor:$("#newbadge").checked?3:0});
+  }
+  $("#qinput").value="";$("#newbadge").checked=true;saveAndRender();
+};
+$("#qinput").addEventListener("keydown",e=>{if(e.key==="Enter")$("#addQuestion").click()});
+$("#manageList").onclick=e=>{
+  if(e.target.classList.contains("editBtn")){
+    const i=+e.target.dataset.i;editing=i;
+    $("#qinput").value=data.questions[i].text;
+    $("#newbadge").checked=data.questions[i].newFor>0;
+    $("#addQuestion").textContent="SAVE CHANGES";$("#qinput").focus();
+  }
+  if(e.target.classList.contains("delBtn")){
+    const i=+e.target.dataset.i;data.questions.splice(i,1);
+    if(editing===i){editing=-1;$("#qinput").value="";$("#addQuestion").textContent="+ ADD QUESTION"}
+    saveAndRender();
+  }
+};
+
+/* ROAD MAP */
+function openRoadmap(){renderRoadmap();$("#roadmap").classList.add("show")}
+$("#hotRoadMapTitle").onclick=openRoadmap;
+$("#hotRoadMapChallenge").onclick=openRoadmap;
+$("#closeRoadmap").onclick=()=>$("#roadmap").classList.remove("show");
+
+/* SOUND */
+function toggleSound(){
+  data.sound=!data.sound;save();
+  if(data.sound){beep();toast("SOUND ON")} else toast("SOUND OFF");
+}
+$("#hotSoundTitle").onclick=toggleSound;
+$("#hotSoundChallenge").onclick=toggleSound;
+
+/* START FROM TITLE */
+$("#hotStart").onclick=()=>{
+  clearChallengeTimers();
+  data.session++;
+  data.questions.forEach(q=>{if(q.newFor>0)q.newFor--});
+  save();renderBank();
+  hideMainScreens();$("#challenge").style.display="block";setMode("challenge");
+  rem=180;count=0;
+  $("#challengeTimer").textContent="3:00";
+  $("#challengeCount").textContent=`0 / ${current().target}`;
+  $("#challengeTarget").textContent=current().target;
+};
+
+/* BACK FROM CHALLENGE */
+$("#hotBack").onclick=()=>{
+  clearChallengeTimers();
+  showTitle();
+};
+
+/* TIMER — click only the stopwatch */
+$("#hotClock").onclick=()=>{
+  if(!started){
+    clearChallengeTimers();
+    started=true;
+    paused=false;
+    let c=3;
+    $("#challengeTimer").textContent="3";
+    beep(650);
+
+    countdownTimer=setInterval(()=>{
+      c--;
+      if(c>0){
+        $("#challengeTimer").textContent=c;
+        beep(650);
+      }else{
+        clearInterval(countdownTimer);
+        countdownTimer=null;
+        $("#challengeTimer").textContent="GO!";
+        beep(900,.14);
+
+        startDelay=setTimeout(()=>{
+          startDelay=null;
+          if(!started)return;
+          $("#challengeTimer").textContent="3:00";
+          runTimer();
+        },430);
+      }
+    },650);
+  }else{
+    paused=!paused;
+    toast(paused?"PAUSED":"GO!");
+  }
+};
+function runTimer(){
+  clearInterval(timer);
+  timer=setInterval(()=>{
+    if(paused || !started)return;
+    rem--;
+    const m=Math.floor(rem/60),s=String(rem%60).padStart(2,"0");
+    $("#challengeTimer").textContent=`${m}:${s}`;
+    if(rem<=10&&rem>0)beep(900,.035);
+    if(rem<=0)finish(false);
+  },1000);
+}
+
+/* QUESTIONS DONE — click the empty box, or press Space */
+function addOne(){
+  if(!started||paused)return;
+  count++;
+  $("#challengeCount").textContent=`${count} / ${current().target}`;
+  beep(720,.045);
+  if(count>=current().target)finish(true);
+}
+$("#hotCount").onclick=addOne;
+
+/* RESULTS */
+function finish(forceSuccess){
+  if(!started)return;
+  const ok=forceSuccess || count>=current().target;
+  clearInterval(timer);
+  clearInterval(countdownTimer);
+  clearTimeout(startDelay);
+  timer=null;countdownTimer=null;startDelay=null;
+  started=false;
+  paused=false;
+  $("#resultTitle").textContent=ok?"MISSION ACCOMPLISHED!":"MISSION FAILED!";
+  $("#resultBody").innerHTML=ok
+    ?`<h2>${count} questions — well done!</h2>`
+    :`<div class="flash">⚡ FLASH TEST! ⚡</div><div style="margin:12px auto;padding:16px 20px;max-width:340px;background:white;border:2px solid #eadbc2;border-radius:12px;box-shadow:0 7px 18px #0002">📝 <b>WRITTEN CHECK</b><br><br>Show what you know!</div><h2>${count} / ${current().target} questions</h2>`;
+  $("#victoryBtn").style.display=ok?"inline-block":"none";
+  $("#flashBtn").style.display=ok?"none":"inline-block";
+  $("#result").classList.add("show");
+  if(ok)[600,760,920].forEach((f,i)=>setTimeout(()=>beep(f,.11),i*100));
+  else[330,260,190].forEach((f,i)=>setTimeout(()=>beep(f,.16),i*120));
+}
+function returnHome(){
+  clearChallengeTimers();
+  $("#result").classList.remove("show");
+  showTitle();
+}
+$("#flashBtn").onclick=returnHome;
+$("#resultBack").onclick=returnHome;
+
+$("#victoryBtn").onclick=()=>{
+  clearChallengeTimers();
+  data.victories++;
+  if(data.victories>=10){
+    if(data.level<LEVELS.length-1){
+      data.level++;data.victories=0;save();renderLevel();
+      $("#result").classList.remove("show");showUnlock();
+    }else{
+      data.victories=10;save();renderRoadmap();
+      $("#result").classList.remove("show");showUnlock();
+    }
+  }else{
+    save();returnHome();
+  }
+};
+$("#unlockStart").onclick=()=>{
+  clearChallengeTimers();
+  if(data.level===LEVELS.length-1 && data.victories>=10){
+    showTitle();openRoadmap();
+  }else{
+    showTitle();
+  }
+};
+
+
+document.addEventListener("pointerdown",e=>{
+  // Sound on every user click/tap anywhere in the app.
+  uiClick();
+},{passive:true});
+
+/* Teacher shortcuts: Space = +1 during challenge.
+   Ctrl+Shift+L = put current state at 9/10 for testing. */
+document.addEventListener("keydown",e=>{
+  if($("#challenge").style.display==="block"&&e.code==="Space"&&!$("#result").classList.contains("show")){
+    e.preventDefault();addOne();
+  }
+  if(e.ctrlKey&&e.shiftKey&&e.key.toLowerCase()==="l"){
+    data.victories=9;save();renderRoadmap();toast("TEST: 9/10 VICTORIES");
+  }
+});
+
+renderBank();renderLevel();showWelcome();
+</script>
+</body>
+</html>
